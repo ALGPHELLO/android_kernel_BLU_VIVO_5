@@ -1,3 +1,17 @@
+# Copyright (c) 2015 MediaTek Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 LOCAL_PATH := $(call my-dir)
 KERNEL_ROOT_DIR := $(PWD)
 
@@ -59,6 +73,12 @@ ifneq ($(strip $(TARGET_NO_KERNEL)),true)
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(TARGET_ARCH)/boot/zImage
       endif
     endif
+    ifeq ($(strip $(MTK_INTERNAL)),yes)
+      KBUILD_BUILD_USER ?= mediatek
+      KBUILD_BUILD_HOST ?= mediatek
+    endif
+    export KBUILD_BUILD_USER
+    export KBUILD_BUILD_HOST
     BUILT_KERNEL_TARGET := $(KERNEL_ZIMAGE_OUT).bin
     INSTALLED_KERNEL_TARGET := $(PRODUCT_OUT)/kernel
     TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
@@ -71,7 +91,10 @@ ifneq ($(strip $(TARGET_NO_KERNEL)),true)
     KERNEL_MAKE_OPTION := O=$(KERNEL_OUT) ARCH=$(TARGET_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_COMPILE) ROOTDIR=$(KERNEL_ROOT_DIR) $(if $(strip $(SHOW_COMMANDS)),V=1)
 
 # .config cannot be PHONY due to config_data.gz
-$(TARGET_KERNEL_CONFIG): $(KERNEL_CONFIG_FILE)
+$(TARGET_KERNEL_CONFIG): $(KERNEL_CONFIG_FILE) $(LOCAL_PATH)/Android.mk
+ifneq ($(wildcard $(TARGET_KERNEL_CONFIG)),)
+$(TARGET_KERNEL_CONFIG): $(shell find $(KERNEL_DIR) -name "Kconfig*")
+endif
 	$(hide) mkdir -p $(KERNEL_OUT)
 	$(MAKE) -C $(KERNEL_DIR) $(KERNEL_MAKE_OPTION) $(KERNEL_DEFCONFIG)
 
@@ -92,36 +115,39 @@ ifneq ($(KERNEL_CONFIG_MODULES),)
 endif
 
 ifeq ($(strip $(MTK_HEADER_SUPPORT)), yes)
-$(BUILT_KERNEL_TARGET): $(KERNEL_ZIMAGE_OUT) $(TARGET_KERNEL_CONFIG) | $(HOST_OUT_EXECUTABLES)/mkimage$(HOST_EXECUTABLE_SUFFIX)
+$(BUILT_KERNEL_TARGET): $(KERNEL_ZIMAGE_OUT) $(TARGET_KERNEL_CONFIG) $(LOCAL_PATH)/Android.mk | $(HOST_OUT_EXECUTABLES)/mkimage$(HOST_EXECUTABLE_SUFFIX)
 	$(hide) $(HOST_OUT_EXECUTABLES)/mkimage$(HOST_EXECUTABLE_SUFFIX) $< KERNEL 0xffffffff > $@
 
 else
-$(BUILT_KERNEL_TARGET): $(KERNEL_ZIMAGE_OUT) $(TARGET_KERNEL_CONFIG) | $(ACP)
+$(BUILT_KERNEL_TARGET): $(KERNEL_ZIMAGE_OUT) $(TARGET_KERNEL_CONFIG) $(LOCAL_PATH)/Android.mk | $(ACP)
 	$(copy-file-to-target)
 
 endif
 
-$(TARGET_PREBUILT_KERNEL): $(BUILT_KERNEL_TARGET) | $(ACP)
+$(TARGET_PREBUILT_KERNEL): $(BUILT_KERNEL_TARGET) $(LOCAL_PATH)/Android.mk | $(ACP)
 	$(copy-file-to-new-target)
 
   else
     BUILT_KERNEL_TARGET := $(TARGET_PREBUILT_KERNEL)
   endif#TARGET_PREBUILT_KERNEL
 
-$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) | $(ACP)
+$(INSTALLED_KERNEL_TARGET): $(BUILT_KERNEL_TARGET) $(LOCAL_PATH)/Android.mk | $(ACP)
 	$(copy-file-to-target)
 
 ifneq ($(KERNEL_CONFIG_MODULES),)
 $(BUILT_SYSTEMIMAGE): $(KERNEL_MODULES_DEPS)
 endif
 
-.PHONY: kernel install-kernel savedefconfig-kernel %config-kernel clean-kernel
+.PHONY: kernel save-kernel kernel-savedefconfig %config-kernel clean-kernel
 kernel: $(INSTALLED_KERNEL_TARGET)
-all_modules: $(INSTALLED_KERNEL_TARGET)
 save-kernel: $(TARGET_PREBUILT_KERNEL)
 
-#TODO
-savedefconfig-kernel:
+kernel-savedefconfig: $(TARGET_KERNEL_CONFIG)
+	cp $(TARGET_KERNEL_CONFIG) $(KERNEL_CONFIG_FILE)
+
+kernel-menuconfig:
+	$(hide) mkdir -p $(KERNEL_OUT)
+	$(MAKE) -C $(KERNEL_DIR) $(KERNEL_MAKE_OPTION) menuconfig
 
 %config-kernel:
 	$(hide) mkdir -p $(KERNEL_OUT)
@@ -130,10 +156,19 @@ savedefconfig-kernel:
 clean-kernel:
 	$(hide) rm -rf $(KERNEL_OUT) $(KERNEL_MODULES_OUT) $(INSTALLED_KERNEL_TARGET)
 
-droid: check-kernel-config
-check-mtk-config: check-kernel-config
+.PHONY: check-kernel-config check-kernel-dotconfig
+droid: check-kernel-config check-kernel-dotconfig
+check-mtk-config: check-kernel-config check-kernel-dotconfig
 check-kernel-config:
-	-python device/mediatek/build/build/tools/check_kernel_config.py -c $(MTK_TARGET_PROJECT_FOLDER)/ProjectConfig.mk -k $(KERNEL_DIR)/arch/$(TARGET_ARCH)/configs/$(KERNEL_DEFCONFIG) -p $(MTK_PROJECT_NAME)
+	python device/mediatek/build/build/tools/check_kernel_config.py -c $(MTK_TARGET_PROJECT_FOLDER)/ProjectConfig.mk -k $(KERNEL_CONFIG_FILE) -p $(MTK_PROJECT_NAME)
+
+
+ifneq ($(filter check-mtk-config check-kernel-dotconfig,$(MAKECMDGOALS)),)
+.PHONY: $(TARGET_KERNEL_CONFIG)
+endif
+check-kernel-dotconfig: $(TARGET_KERNEL_CONFIG)
+	python device/mediatek/build/build/tools/check_kernel_config.py -c $(MTK_TARGET_PROJECT_FOLDER)/ProjectConfig.mk -k $(TARGET_KERNEL_CONFIG) -p $(MTK_PROJECT_NAME)
+
 
 endif#TARGET_NO_KERNEL
 endif#LINUX_KERNEL_VERSION
