@@ -30,7 +30,7 @@ script:
   #- make O=out mrproper
   - export export CROSS_COMPILE=~/aarch64-linux-android-4.9/bin/aarch64-linux-android-
   - export ARCH_MTK_PLATFORM=mt6753
-  #- export make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE  O=out gionee6753_65u_m0_defconfig
+  - export ARCH=arm64
   - export KBUILD_BUILD_USER="fujitsu"
   - export KBUILD_BUILD_HOST="ALGPHELLO"
   - KERNEL_DIR=$PWD/android_kernel_BLU_VIVO_5
