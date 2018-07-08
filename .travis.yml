@@ -40,7 +40,7 @@ script:
   #- make O=out -j16
   #- make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE O=out -j16 
   #- bash build.sh
-  - make gionee6753_65u_m0_defconfig
+  - make gionee6753_66c_m0_defconfig
   - make -j16
   #- make ARCH=arm64 -j16 clean mrproper
 
