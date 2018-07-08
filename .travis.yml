@@ -53,9 +53,9 @@ deploy:
   api_key: "$GIT_OAUTH_TOKEN_TB"
   
   on:
-    tags: false
+    tags: true
     repo: ALGPHELLO/android_kernel_BLU_VIVO_5
-    branch: master
+    branch: android-6.0_3.18
 
 branches:
   except:
