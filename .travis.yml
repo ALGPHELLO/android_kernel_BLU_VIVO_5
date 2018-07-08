@@ -1,0 +1,61 @@
+language: c
+#######################################################################################
+os:
+  - linux
+  
+sudo: enabled
+
+addons:
+  apt:
+    packages:
+      - curl
+
+#######################################################################################
+
+
+before_install:
+
+  - sudo apt-get update -qq
+  
+  - git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/ ~/aarch64-linux-android-4.9/
+  
+  - sudo chmod -R a+x *
+
+#######################################################################################
+
+
+script:  
+  - mkdir -p out
+  - make O=out clean
+  - make O=out mrproper
+  - export export CROSS_COMPILE=~/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+  - export ARCH_MTK_PLATFORM=mt6753
+  - export make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE  O=out gionee6753_65u_m0_defconfig
+  - export KBUILD_BUILD_USER="fujitsu"
+  - export KBUILD_BUILD_HOST="ALGPHELLO"
+  - KERNEL_DIR=$PWD/android_kernel_BLU_VIVO_5
+  - ZIMAGE=$KERNEL_DIR/arch/arm64/boot/zImage
+  #- mkdir /home/travis/build/ALGPHELLO/android_kernel_condor_gnsz6753_66_n/tools/tools
+  #- make O=out gionee6753_65u_m0_defconfig
+  #- make O=out -j16
+  - make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE O=out -j16 
+  #- bash build.sh
+  #- make -j16
+  #- make ARCH=arm64 -j16 clean mrproper
+
+after_success:
+  - curl --upload-file arch/arm64/boot/zImage https://transfer.sh/BLU_VIVO_5_kernel
+  
+deploy:
+  skip_cleanup: true
+  provider: releases
+  api_key: "$GIT_OAUTH_TOKEN_TB"
+  
+  on:
+    tags: false
+    repo: ALGPHELLO/android_kernel_BLU_VIVO_5
+    branch: master
+
+branches:
+  except:
+    - /^(?i:untagged)-.*$/
