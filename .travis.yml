@@ -25,9 +25,9 @@ before_install:
 
 
 script:  
-  #- mkdir -p out
-  #- make O=out clean
-  #- make O=out mrproper
+  - mkdir -p out
+  - make O=out clean
+  - make O=out mrproper
   - export export CROSS_COMPILE=~/aarch64-linux-android-4.9/bin/aarch64-linux-android-
   - export ARCH_MTK_PLATFORM=mt6753
   - export ARCH=arm64
@@ -36,12 +36,12 @@ script:
   - KERNEL_DIR=$PWD/android_kernel_BLU_VIVO_5
   - ZIMAGE=$KERNEL_DIR/arch/arm64/boot/zImage
   #- mkdir /home/travis/build/ALGPHELLO/android_kernel_condor_gnsz6753_66_n/tools/tools
-  #- make O=out gionee6753_65u_m0_defconfig
-  #- make O=out -j16
+  - make O=out gionee6753_65u_m0_defconfig
+  - make O=out -j16
   #- make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE O=out -j16 
   #- bash build.sh
-  - make gionee6753_66c_m0_defconfig
-  - make -j16
+  #- make gionee6753_66c_m0_defconfig
+  #- make -j16
   #- make ARCH=arm64 -j16 clean mrproper
 
 after_success:
